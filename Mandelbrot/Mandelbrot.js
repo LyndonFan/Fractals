@@ -1,20 +1,21 @@
-const RES = 20;
-const MAXITER = 50;
-const BOUND = 20;
+const RES = 1;
+const MAXITER = 40;
+const BOUND = 10;
 var values = [];
 var loading = true;
 var center = [-1,0];
 var scl = 1;
 var prevW, prevH;
+var frDiv;
 
 function setup() {
   background(255);
   colorMode(HSB,100);
-  calculateValues();
   console.log(floor(millis())+" ms");
   createCanvas(windowWidth,windowHeight);
-  prevW = windowWidth;
-  prevH = windowHeight;
+  pixelDensity(RES);
+  //frDiv = createDiv('');
+  //for (let i = 0; i<360; i+=30){console.log(HSVtoRGB(i,1,1));}
 }
 
 function iter(c){
@@ -38,70 +39,68 @@ function translatePoint(rawX,rawY){
   return [x,y];
 }
 
+function HSVtoRGB(h,s,v){
+  var c = v*s;
+  var x = c*(1 - abs((h/60)%2-1));
+  if (0<=h && h<60){return [c,x,0];}
+  else if (60<=h && h<120){return [x,c,0];}
+  else if (120<=h && h<180){return [0,c,x];}
+  else if (180<=h && h<240){return [0,x,c];}
+  else if (240<=h && h<300){return [x,0,c];}
+  else {return [c,0,x];}
+}
+
 function calculateValues(){
   loading = true;
-  var newValues = [];
-  for (var i = 0; i < windowWidth; i+=RES){
-    newValues.push([]);
-    for (var j = 0; j < windowHeight; j+=RES){
-      var temp = iter(translatePoint(i,j));
-      newValues[i/RES].push(temp);
+  //var newValues = [];
+  for (var i = 0; i < windowWidth/RES; i++){
+    //newValues.push([]);
+    for (var j = 0; j < windowHeight/RES; j++){
+      var temp = iter(translatePoint(i*RES,j*RES));
+      var clr;
+      if (temp==MAXITER){
+        clr = [0,0,0];
+      } else {
+        clr = HSVtoRGB(temp/MAXITER*360,1,1);
+      }
+      for (var x = 0; x<RES; x++){
+        for (var y = 0; y<RES; y++){
+          var pix = (i*RES + x + (j*RES+y)*windowWidth)*4;
+          for (let ind = 0; ind < 3; ind++){pixels[pix+ind] = 255*clr[ind];}
+          pixels[pix+3] = 255;
+        }
+      }
+      
+      //newValues[i/RES].push(temp);
     }
   }
-  values = newValues;
+  //values = newValues;
   loading = false;
 }
 
-//function mouseClicked(){
-//  prevX = mouseX;
-//  prevY = mouseY;
-//}
-
-//function mouseDragged(){
-//  center[0] += mouseX - prevX;
-//  center[1] += mouseY - prevY;
-//  calculateValues();
-//}
+function windowResized(){
+  createCanvas(windowWidth,windowHeight);
+}
 
 function keyPressed(){
   const MINDIM = min(windowHeight,windowWidth);
-  if (keyCode === 189){
-    scl++; calculateValues();
-  } else if (keyCode === 187){
-    scl--; calculateValues();
-  } else if (keyCode === 87){
-    center[1]-=convScl()/2; calculateValues();
-  } else if (keyCode === 83){
-    center[1]+=convScl()/2; calculateValues();
-  } else if (keyCode === 65){
-    center[0]-=convScl()/2; calculateValues();
-  } else if (keyCode === 68){
-    center[0]+=convScl()/2; calculateValues();
-  } else if (keyCode === 82){
+  if (keyCode === 189){scl++;}
+  else if (keyCode === 187){scl--;}
+  else if (keyCode === 87){center[1]-=convScl()/10;}
+  else if (keyCode === 83){center[1]+=convScl()/10;}
+  else if (keyCode === 65){center[0]-=convScl()/10;}
+  else if (keyCode === 68){center[0]+=convScl()/10;}
+  else if (keyCode === 82){
     center = [-1,0];
     scl = 1;
-    calculateValues();
   }
 }
 
 function draw() {
   noStroke();
-  if (prevW !== windowWidth || prevH !== windowHeight){
-    createCanvas(windowWidth,windowHeight);
-    prevW = windowWidth;
-    prevH = windowHeight;
-    calculateValues();
-  }
-  textSize(windowHeight/10);
-  if (loading){text("Loading...",windowWidth/2-windowHeight/5,windowHeight/2+windowHeight/20);}
-  else{
-    for (var i = 0; i < windowWidth; i+=RES){
-      for (var j = 0; j < windowHeight; j+=RES){
-        var depth = values[i/RES][j/RES];
-        if (depth==MAXITER){fill(0);}
-        else {fill(color(depth/MAXITER*100,100,100));}
-        square(i,j,RES);
-      }
-    }
-  }
+  loadPixels();
+  console.log(windowWidth, windowHeight, pixels.length);
+  calculateValues();
+  updatePixels();
+  //frDiv.html(floor(frameRate()));
 }
